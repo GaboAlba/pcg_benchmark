@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show:*)",
+      "Read(//c/Github/LLM_Game_Level_Generator/LLM_Game_Level_Generator/**)",
+      "Read(//c/Github/LLM_Game_Level_Generator/**)",
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")"
+    ]
+  }
+}
