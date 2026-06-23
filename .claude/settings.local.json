@@ -4,7 +4,11 @@
       "Bash(pip show:*)",
       "Read(//c/Github/LLM_Game_Level_Generator/LLM_Game_Level_Generator/**)",
       "Read(//c/Github/LLM_Game_Level_Generator/**)",
-      "Bash(python -c \"import sys; print\\(sys.executable\\)\")"
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(ls:*)",
+      "Bash(python3 -c \"import json; d = json.load\\(open\\('/c/Github/LLM_Game_Level_Generator/LLM_Game_Level_Generator/tools/pcg_benchmark/pcg_results.json'\\)\\); print\\(type\\(d\\)\\); print\\(list\\(d.keys\\(\\)\\) if isinstance\\(d, dict\\) else f'list len={len\\(d\\)}, first type={type\\(d[0]\\)}'\\)\")",
+      "Bash(python -c \"import json; d = json.load\\(open\\('/c/Github/LLM_Game_Level_Generator/LLM_Game_Level_Generator/tools/pcg_benchmark/pcg_results.json'\\)\\); print\\(type\\(d\\)\\); print\\(list\\(d.keys\\(\\)\\) if isinstance\\(d, dict\\) else f'list len={len\\(d\\)}, first type={type\\(d[0]\\)}'\\)\")",
+      "Bash(python:*)"
     ]
   }
 }
