@@ -56,9 +56,10 @@ def to_jsonable(obj):
 def parse_results(results_path: str) -> "dict[str, list]":
     """Load and bucket the LLM-generated maps by variant.
 
-    Keys in the results file look like ``"{json_prefix}-{index}"`` (e.g.
-    ``"binary-v0-12"``); we split off the trailing index with ``rsplit`` so it
-    keeps working for indices >= 10.
+    Keys in the results file look like ``"{json_prefix}_{index}"`` (e.g.
+    ``"binary-v0_12"``); the index is separated by an underscore, so we split on
+    the last ``_``. This keeps working for indices >= 10 (the old ``[:-2]``
+    slice broke there).
     """
     contents = {variant.key: [] for variant in VARIANTS}
 
@@ -72,7 +73,7 @@ def parse_results(results_path: str) -> "dict[str, list]":
             print(f"Error converting {result_key} to integer array")
             continue
 
-        prefix = result_key.rsplit("-", 1)[0]
+        prefix = result_key.rsplit("_", 1)[0]
         variant = VARIANTS_BY_PREFIX.get(prefix)
         if variant is None:
             print(f"Unknown content key: {result_key}")
