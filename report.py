@@ -12,14 +12,21 @@ Per the agreed workflow, an iteration page is only generated if it does not
 already exist (so finished iterations are never rebuilt). The home page is
 always regenerated so newly added iterations show up.
 
+The iterations live in the ``LLM_Game_Level_Generator_Benchmark_Results_Page``
+checkout -- a separate git repo published by GitHub Pages. Once the pages are
+built, this script commits and pushes that checkout to its ``main`` branch,
+which triggers a redeployment so the published page always matches the latest
+iteration (see ``publish.py``; pass ``--no-publish`` to skip it).
+
 Usage:
-    python report.py [--iterations DIR] [--force]
+    python report.py [--iterations DIR] [--force] [--no-publish]
 """
 
 import argparse
 import glob
 import os
 import re
+import sys
 
 import matplotlib
 
@@ -28,11 +35,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import analysis
+import publish
 from analysis import METRICS
 from variants import VARIANTS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_ITERATIONS = os.path.normpath(os.path.join(HERE, "..", "Iterations"))
+# The iterations live in the GitHub Pages results repo, not in this one.
+DEFAULT_ITERATIONS = publish.ITERATIONS_DIR
 CONTROL_FILE = "Iteration Control.txt"
 
 STYLE = """
@@ -251,7 +260,9 @@ def render_iteration_page(folder, name, title, data, summary, verdict):
         f.write(html)
 
 
-def render_home(iterations_root, entries):
+def render_home(iterations_root, entries, heading="PCG Benchmark Report",
+                 subtitle="Comparing LLM-generated levels against a non-LLM random baseline.",
+                 sibling_label=None, sibling_href=None):
     """Write the home ``index.html`` with methodology + iteration links."""
     cards = ""
     for name, title, verdict in entries:
@@ -264,13 +275,16 @@ def render_home(iterations_root, entries):
           {badge}
         </a>"""
 
+    nav = f'<p class="muted"><a href="{sibling_href}">{sibling_label} →</a></p>' if sibling_href else ""
+
     html = f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PCG Benchmark — LLM vs Non-LLM</title><style>{STYLE}</style></head>
 <body><div class="container">
-<h1>PCG Benchmark Report</h1>
-<p class="subtitle">Comparing LLM-generated levels against a non-LLM random baseline.</p>
+<h1>{heading}</h1>
+<p class="subtitle">{subtitle}</p>
+{nav}
 
 <h2>What is being evaluated</h2>
 <p>For each game variant the benchmark takes a set of <strong>LLM-generated</strong>
@@ -301,17 +315,46 @@ data is exported as CSV next to each iteration for deeper analysis.</p>
         f.write(html)
 
 
+def _commit_message(generated: "list[str]", entries: "list[tuple]") -> str:
+    """Describe what this run changed, for the publish commit."""
+    if len(generated) == 1:
+        name = generated[0]
+        title = next((t for n, t, _ in entries if n == name), None)
+        return f"Add iteration {name}" + (f": {title}" if title else "")
+    if generated:
+        return f"Add iterations {', '.join(generated)}"
+    return "Rebuild benchmark report"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--iterations", default=DEFAULT_ITERATIONS,
                         help="Path to the Iterations folder.")
     parser.add_argument("--force", action="store_true",
                         help="Rebuild iteration pages even if they already exist.")
+    parser.add_argument("--heading", default="PCG Benchmark Report",
+                        help="H1 heading for this report's home page.")
+    parser.add_argument("--subtitle", default="Comparing LLM-generated levels against a non-LLM random baseline.",
+                        help="Subtitle text for this report's home page.")
+    parser.add_argument("--sibling-label", default=None,
+                        help="Optional link text pointing to a related report (e.g. the "
+                             "Reasoning/Non-Reasoning counterpart).")
+    parser.add_argument("--sibling-href", default=None,
+                        help="Optional href for --sibling-label, relative to this report's home page.")
+    parser.add_argument("--no-publish", dest="publish", action="store_false",
+                        help="Build the pages but do not commit/push the results page repo.")
+    parser.add_argument("--remote", default=publish.DEFAULT_REMOTE,
+                        help="Git remote of the results page repo to push to.")
+    parser.add_argument("--branch", default=publish.DEFAULT_BRANCH,
+                        help="Branch GitHub Pages deploys from (the push target).")
+    parser.add_argument("--message", default=None,
+                        help="Commit message for the publish step (default: generated).")
     args = parser.parse_args()
 
     root = args.iterations
     titles = parse_control_file(root)
     entries = []
+    generated = []
 
     for name, folder in find_iteration_dirs(root):
         title = titles.get(name, f"Iteration {name}")
@@ -328,12 +371,29 @@ def main():
             summary.to_csv(os.path.join(folder, "summary.csv"), index=False)
             make_charts(folder, summary, verdict)
             render_iteration_page(folder, name, title, data, summary, verdict)
+            generated.append(name)
             print(f"Iteration {name}: generated")
 
         entries.append((name, title, verdict))
 
-    render_home(root, entries)
+    render_home(root, entries, heading=args.heading, subtitle=args.subtitle,
+                sibling_label=args.sibling_label, sibling_href=args.sibling_href)
     print(f"Wrote {os.path.join(root, 'index.html')}")
+
+    if not args.publish:
+        print("Publish skipped (--no-publish).")
+        return
+    if not publish.inside_pages_repo(root):
+        print(f"Publish skipped: {root} is outside "
+              f"{publish.PAGES_REPO}, so there is nothing to deploy.")
+        return
+
+    if not publish.publish(args.message or _commit_message(generated, entries),
+                           remote=args.remote, branch=args.branch):
+        print("The pages were built but not published. Fix the error above and "
+              "re-run with --force, or commit/push "
+              f"{publish.PAGES_REPO} by hand.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
