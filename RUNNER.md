@@ -46,6 +46,15 @@ the HTML comparison report from the numbered folders under that checkout's
 `Iterations/`, then commits and pushes it to `main`, which triggers the Pages
 redeployment -- so the published page always reflects the newest iteration.
 
+Two reports are published side by side, cross-linked (each one's home page
+links to the other via `--sibling-label`/`--sibling-href`), and reachable from
+the bare Pages URL through a chooser landing page (see `publish.py`):
+
+| Track | Iterations live in | `--track` value |
+| --- | --- | --- |
+| Reasoning model (default) | `Iterations/` | `reasoning` |
+| Non-reasoning (gpt-4.1) | `Iterations/nonreasoning/` | `nonreasoning` |
+
 To add a new iteration:
 
 ```
@@ -54,15 +63,21 @@ python runner.py --iteration <N> --seed 1
 python report.py
 ```
 
-`--iteration <N>` writes straight into the results page repo
-(`.../LLM_Game_Level_Generator_Benchmark_Results_Page/Iterations/<N>`), so you
-don't have to spell out `--output-dir`. `report.py` then picks it up, skips
-iterations that already have a page (so it's safe to run after every run), and
-publishes.
+add `--track nonreasoning` to both commands to add it to the non-reasoning
+report instead (and point `report.py --iterations` at
+`../LLM_Game_Level_Generator_Benchmark_Results_Page/Iterations/nonreasoning`,
+since `--track` is a `runner.py`-only flag -- `report.py`'s own `--iterations`
+already says which report to build).
 
-The publish step (`publish.py`) also makes sure the Pages repo root has the two
-files Pages needs -- `.nojekyll`, and an `index.html` that redirects to
-`Iterations/index.html` -- creating them on the first run.
+`--iteration <N>` writes straight into the results page repo
+(`.../LLM_Game_Level_Generator_Benchmark_Results_Page/Iterations/<N>`, or
+`Iterations/nonreasoning/<N>` with `--track nonreasoning`), so you don't have
+to spell out `--output-dir`. `report.py` then picks it up, skips iterations
+that already have a page (so it's safe to run after every run), and publishes.
+
+The publish step (`publish.py`) also makes sure the Pages repo root has the
+files Pages needs -- `.nojekyll`, and a chooser `index.html` linking to both
+reports -- (re)writing them on every publish.
 
 ### Publish options
 

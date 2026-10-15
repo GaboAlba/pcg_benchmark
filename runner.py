@@ -25,10 +25,14 @@ parallelism instead of being limited by the GIL under threads.
 Iteration output belongs in the ``LLM_Game_Level_Generator_Benchmark_Results_Page``
 checkout (the GitHub Pages repo), so prefer ``--iteration N`` over spelling out
 ``--output-dir``: it resolves to that repo's ``Iterations/N`` folder, where
-``report.py`` will pick it up and publish it (see ``publish.py``).
+``report.py`` will pick it up and publish it (see ``publish.py``). Two reports
+are published side by side -- the reasoning-model one (default) and the
+non-reasoning (gpt-4.1) one under ``Iterations/nonreasoning`` -- pick the
+latter with ``--track nonreasoning``.
 
 Usage:
-    python runner.py [--results PATH] [--output-dir DIR | --iteration N] [--seed N]
+    python runner.py [--results PATH] [--output-dir DIR | --iteration N [--track {reasoning,nonreasoning}]]
+                      [--seed N]
                       [--workers N] [--baseline {noise,ga,wfc}]
                       [--population-size N] [--generations N]
                       [--crossover-rate F] [--mutation-rate F]
@@ -232,7 +236,11 @@ def main():
                         help="Path to the pcg_results.json with the LLM output.")
     parser.add_argument("--iteration", default=None,
                         help="Iteration number; writes to the results page repo's "
-                             "Iterations/<N> folder. Overrides --output-dir.")
+                             "Iterations/<N> folder (or Iterations/nonreasoning/<N>, "
+                             "see --track). Overrides --output-dir.")
+    parser.add_argument("--track", choices=sorted(publish.TRACKS), default=publish.DEFAULT_TRACK,
+                        help="Which published report --iteration's folder belongs to "
+                             "(ignored without --iteration).")
     parser.add_argument("--output-dir", default=".",
                         help="Directory to write eval_results.json and PNGs into.")
     parser.add_argument("--seed", type=int, default=None,
@@ -286,7 +294,7 @@ def main():
     args = parser.parse_args()
 
     if args.iteration is not None:
-        args.output_dir = publish.iteration_dir(args.iteration)
+        args.output_dir = publish.iteration_dir(args.iteration, args.track)
     os.makedirs(args.output_dir, exist_ok=True)
     print(f"Writing output to {os.path.abspath(args.output_dir)}")
 
